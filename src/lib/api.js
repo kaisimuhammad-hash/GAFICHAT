@@ -75,6 +75,8 @@ export const api = {
   },
   chatMode: (chatId, mode) =>
     request(`/chats/${id(chatId)}/mode`, { method: 'POST', body: { mode } }),
+  updateChat: (chatId, patch) =>
+    request(`/chats/${id(chatId)}`, { method: 'PATCH', body: patch }),
   read: (chatId) => request(`/chats/${id(chatId)}/read`, { method: 'POST', body: {} }),
   deleteChat: (chatId, remote = false) =>
     request(`/chats/${id(chatId)}`, { method: 'DELETE', body: { remote } }),

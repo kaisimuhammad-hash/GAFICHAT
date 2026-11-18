@@ -30,7 +30,10 @@ import {
   Button,
   ConfirmDialog,
   EmptyState,
+  Field,
   IconButton,
+  Input,
+  Modal,
   Spinner,
   StatusDot,
   cn,
@@ -95,6 +98,9 @@ export default function Inbox({
   const [savingEdit, setSavingEdit] = useState(false);
   const [lightbox, setLightbox] = useState(null);
   const [chatMenu, setChatMenu] = useState(null);
+  const [renameChat, setRenameChat] = useState(null);
+  const [renameDraft, setRenameDraft] = useState('');
+  const [savingRename, setSavingRename] = useState(false);
   const [chatDelete, setChatDelete] = useState(null);
   const [deletingChat, setDeletingChat] = useState(false);
   const [attachment, setAttachment] = useState(null);
@@ -381,6 +387,33 @@ export default function Inbox({
     });
   };
 
+  const startRename = (target) => {
+    setChatMenu(null);
+    setRenameChat(target);
+    setRenameDraft(target.name || '');
+  };
+
+  const saveRename = async () => {
+    const name = renameDraft.trim();
+    if (!renameChat) return;
+    if (!name || name === renameChat.name) {
+      setRenameChat(null);
+      return;
+    }
+    setSavingRename(true);
+    try {
+      const data = await api.updateChat(renameChat.id, { name });
+      setThread((prev) => (prev?.chat?.id === data.chat.id ? { ...prev, chat: data.chat } : prev));
+      await refresh();
+      pushToast({ type: 'success', title: 'Nama kontak diperbarui', text: data.chat.name });
+      setRenameChat(null);
+    } catch (err) {
+      pushToast({ type: 'error', title: 'Gagal mengganti nama', text: err.message });
+    } finally {
+      setSavingRename(false);
+    }
+  };
+
   const runDeleteChat = async () => {
     if (!chatDelete) return;
     const target = chatDelete;
@@ -623,7 +656,7 @@ export default function Inbox({
                   onClick={(event) => {
                     const rect = event.currentTarget.getBoundingClientRect();
                     const width = 224;
-                    const height = 96;
+                    const height = 140;
                     setChatMenu({
                       chat,
                       left: Math.min(
@@ -1093,6 +1126,15 @@ export default function Inbox({
             >
               <button
                 type="button"
+                onClick={() => startRename(chatMenu.chat)}
+                className="flex w-full items-center gap-2 rounded-lg px-2.5 py-2 text-left text-[11px] text-slate-600 transition hover:bg-slate-100"
+              >
+                <PencilLine className="h-3.5 w-3.5" />
+                Ubah nama kontak
+              </button>
+              <div className="my-1 h-px bg-slate-100" />
+              <button
+                type="button"
                 onClick={() => {
                   const target = chatMenu.chat;
                   setChatMenu(null);
@@ -1125,6 +1167,39 @@ export default function Inbox({
           </div>,
           document.body,
         )}
+
+      <Modal
+        open={!!renameChat}
+        onClose={() => (savingRename ? null : setRenameChat(null))}
+        title="Ubah nama kontak"
+        description="Nama ini hanya tampil di dashboard. Kontak di WhatsApp pelanggan tidak berubah."
+        size="sm"
+        footer={
+          <>
+            <Button variant="ghost" onClick={() => setRenameChat(null)} disabled={savingRename}>
+              Batal
+            </Button>
+            <Button
+              onClick={saveRename}
+              loading={savingRename}
+              disabled={!renameDraft.trim() || renameDraft.trim() === renameChat?.name}
+            >
+              Simpan
+            </Button>
+          </>
+        }
+      >
+        <Field label="Nama kontak" hint="Maksimal 60 karakter. Berlaku untuk semua agen.">
+          <Input
+            value={renameDraft}
+            maxLength={60}
+            autoFocus
+            onChange={(event) => setRenameDraft(event.target.value)}
+            onKeyDown={(event) => event.key === 'Enter' && saveRename()}
+            placeholder="Contoh: Kaisi Muhammad"
+          />
+        </Field>
+      </Modal>
 
       <ConfirmDialog
         open={!!confirm}
